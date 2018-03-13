@@ -1,0 +1,7 @@
+version: 0.1
+
+phases:
+  install:
+    commands:
+      - echo $S3Bucket
+      - aws s3 sync --delete ./public $S3Bucket --cache-control max-age=3600
