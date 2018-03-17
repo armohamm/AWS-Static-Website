@@ -1,6 +1,10 @@
 [
   {
-    "ParameterKey": "WebsiteName",
+    "ParameterKey": "name",
+    "ParameterValue": "example-com"
+  },
+  {
+    "ParameterKey": "websitename",
     "ParameterValue": "example.com"
   } 
 ]
