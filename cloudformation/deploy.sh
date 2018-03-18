@@ -3,7 +3,7 @@
 # Paramters
 capabilities="CAPABILITY_IAM"
 parameters="parameters.json"
-name=`jq -r '.[] | select(.ParameterKey=="Name") | .ParameterValue' $parameters`
+name=`jq -r '.[] | select(.ParameterKey=="name") | .ParameterValue' $parameters`
 profile=${1:-default}
 template="template.yml"
 
