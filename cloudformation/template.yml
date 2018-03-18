@@ -2,462 +2,279 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: 'CloudFront, S3, CodeCommit, CodeBuild, CodePipeline and IAM for a Static Website'
 Parameters:
-    WebsiteName:
-        Type: 'String'
+  name:
+    Type: 'String'
+  websitename:
+    Type: 'String'
 Resources:
-    ACMCertificate:
-        Type: 'AWS::CertificateManager::Certificate'
-        Properties:
-            DomainName:
-                Ref: WebsiteName
-            SubjectAlternativeNames:
-                - Fn::Join:
-                    - '.'
-                    -
-                        - 'www'
-                        -
-                            Ref: WebsiteName
-            Tags:
-                -
-                    Key: "Website"
-                    Value:
-                        Ref: WebsiteName
-                -
-                    Key: "Name"
-                    Value:
-                        Ref: WebsiteName
-    IAMRoleCodeBuild:
-        Type: 'AWS::IAM::Role'
-        Properties:
-            AssumeRolePolicyDocument:
-                Version: '2012-10-17'
-                Statement:
-                    -
-                        Effect: 'Allow'
-                        Principal:
-                            Service:
-                                - 'codebuild.amazonaws.com'
-                        Action:
-                            - 'sts:AssumeRole'
-            Policies:
-                -
-                    PolicyName: 'S3'
-                    PolicyDocument:
-                        Version: '2012-10-17'
-                        Statement:
-                            -
-                                Effect: 'Allow'
-                                Action:
-                                    - 's3:GetObject'
-                                    - 's3:GetObjectVersion'
-                                Resource:
-                                    -
-                                        Fn::GetAtt:
-                                            - S3BucketArtifacts
-                                            - Arn
-                                    - 
-                                        Fn::Join:
-                                            - ''
-                                            -
-                                                -
-                                                    Fn::GetAtt:
-                                                        - S3BucketArtifacts
-                                                        - Arn
-                                                - '/*'
-                            -
-                                Effect: 'Allow'
-                                Action:
-                                    - 's3:PutObject'
-                                    - 's3:ListObjects'
-                                    - 'S3:ListBucket'
-                                    - 's3:DeleteObject'
-                                Resource:
-                                    -
-                                        Fn::GetAtt:
-                                            - S3BucketWebsite
-                                            - Arn
-                                    - 
-                                        Fn::Join:
-                                            - ''
-                                            -
-                                                -
-                                                    Fn::GetAtt:
-                                                        - S3BucketWebsite
-                                                        - Arn
-                                                - '/*'
-            Path: '/'
-    IAMRolePolicyCodeBuild:
-        Type: 'AWS::IAM::Policy'
-        Properties:
-            PolicyName: 'CloudWatch'
-            Roles:
-                -
-                    Ref: IAMRoleCodeBuild
-            PolicyDocument:
-                Version: '2012-10-17'
-                Statement:
-                    -
-                        Effect: 'Allow'
-                        Action:
-                            - 'logs:CreateLogGroup'
-                            - 'logs:CreateLogStream'
-                            - 'logs:PutLogEvents'
-                        Resource:
-                            -
-                                Fn::Join:
-                                    - ''
-                                    -
-                                        - 'arn:aws:logs:'
-                                        -
-                                            Ref: AWS::Region
-                                        - ':'
-                                        -
-                                            Ref: AWS::AccountId
-                                        - ':log-group:/aws/codebuild/'
-                                        -
-                                            Ref: CodeBuild
-                                        - ':*'
-    IAMRoleCodePipeline:
-        Type: 'AWS::IAM::Role'
-        Properties:
-            AssumeRolePolicyDocument:
-                Version: '2012-10-17'
-                Statement:
-                    -
-                        Effect: 'Allow'
-                        Principal:
-                            Service:
-                                - 'codepipeline.amazonaws.com'
-                        Action:
-                            - 'sts:AssumeRole'
-            Policies:
-                -
-                    PolicyName: 'CodeCommit'
-                    PolicyDocument:
-                        Version: '2012-10-17'
-                        Statement:
-                            -
-                                Effect: 'Allow'
-                                Action:
-                                    - 'codecommit:GetBranch'
-                                    - 'codecommit:GetCommit'
-                                    - 'codecommit:UploadArchive'
-                                    - 'codecommit:GetUploadArchiveStatus'
-                                    - 'codecommit:CancelUploadArchive'
-                                Resource:
-                                    - Fn::GetAtt:
-                                        - CodeCommit
-                                        - Arn
-                -
-                    PolicyName: 'S3'
-                    PolicyDocument:
-                        Version: '2012-10-17'
-                        Statement:
-                            -
-                                Effect: 'Allow'
-                                Action:
-                                    - 's3:Get*'
-                                    - 's3:Put*'
-                                Resource:
-                                    - Fn::GetAtt:
-                                        - S3BucketArtifacts
-                                        - Arn
-                                    - Fn::Join:
-                                        - ''
-                                        -
-                                            - Fn::GetAtt:
-                                                - S3BucketArtifacts
-                                                - Arn
-                                            - '/*'
-                -
-                    PolicyName: 'CodeBuild'
-                    PolicyDocument:
-                        Version: '2012-10-17'
-                        Statement:
-                            -
-                                Effect: 'Allow'
-                                Action:
-                                    - 'codebuild:BatchGetBuilds'
-                                    - 'codebuild:StartBuild'
-                                Resource:
-                                    -
-                                        Fn::GetAtt:
-                                            - CodeBuild
-                                            - Arn
-            Path: '/'
-    S3BucketWebsite:
-        Type: 'AWS::S3::Bucket'
-        DeletionPolicy: 'Retain'
-        Properties:
-            Tags:
-                -
-                    Key: "Website"
-                    Value:
-                        Ref: WebsiteName
-    S3BucketArtifacts:
-        Type: 'AWS::S3::Bucket'
-        DeletionPolicy: 'Retain'
-        Properties:
-            Tags:
-                -
-                    Key: "Website"
-                    Value:
-                        Ref: WebsiteName
-    S3BucketPolicyWebsite:
-        Type: 'AWS::S3::BucketPolicy'
-        Properties:
-            Bucket:
-                Ref: S3BucketWebsite
-            PolicyDocument:
-                Statement:
-                    -
-                        Action:
-                            - 's3:GetObject'
-                        Effect: 'Allow'
-                        Resource:
-                            Fn::Join:
-                                - ''
-                                -
-                                    - 'arn:aws:s3:::'
-                                    -
-                                        Ref: S3BucketWebsite
-                                    - '/*'
-                        Principal:
-                            AWS:
-                                Fn::Join:
-                                    - ' '
-                                    -
-                                        - 'arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity'
-                                        - Ref: CloudFrontAI
-    CodeCommit:
-        Type: 'AWS::CodeCommit::Repository'
-        DeletionPolicy: 'Retain'
-        Properties:
-            RepositoryDescription:
-                Ref: WebsiteName
-            RepositoryName:
-                Ref: AWS::StackName
-    CodePipeline:
-        Type: 'AWS::CodePipeline::Pipeline'
-        Properties:
-            RoleArn:
-                Fn::GetAtt:
-                    - IAMRoleCodePipeline
-                    - Arn
-            Stages:
-                -
-                    Name: 'Source'
-                    Actions:
-                        -
-                            Name: 'SourceAction'
-                            ActionTypeId:
-                                Category: 'Source'
-                                Owner: 'AWS'
-                                Version: 1
-                                Provider: 'CodeCommit'
-                            OutputArtifacts:
-                                -
-                                    Name: 'SourceOutput'
-                            Configuration:
-                                BranchName: 'master'
-                                RepositoryName:
-                                    Fn::GetAtt:
-                                        - CodeCommit
-                                        - Name
-                            RunOrder: 1
-                - 
-                    Name: 'Build'
-                    Actions:
-                        -
-                            Name: 'Build'
-                            ActionTypeId:
-                                Category: 'Build'
-                                Owner: 'AWS'
-                                Version: 1
-                                Provider: 'CodeBuild'
-                            OutputArtifacts:
-                                -
-                                    Name: 'MyAppBuild'
-                            InputArtifacts:
-                                -
-                                    Name: 'SourceOutput'
-                            Configuration:
-                                ProjectName:
-                                    Ref: CodeBuild
-            ArtifactStore:
-                Type: 'S3'
-                Location:
-                    Ref: S3BucketArtifacts
-    CodeBuild:
-        Type: 'AWS::CodeBuild::Project'
-        Properties:
-            Name:
-                Ref: AWS::StackName
-            Description:
-                Fn::Join:
-                    - ' '
-                    -
-                        - 'Automated build of'
-                        -
-                            Ref: WebsiteName
-            ServiceRole:
-                Fn::GetAtt:
-                    - IAMRoleCodeBuild
-                    - Arn
-            Artifacts:
-                Type: 'CODEPIPELINE'
-            Environment:
-                Type: 'LINUX_CONTAINER'
-                ComputeType: 'BUILD_GENERAL1_SMALL'
-                Image: 'aws/codebuild/ubuntu-base:14.04'
-                EnvironmentVariables:
-                    -
-                        Name: S3Bucket
-                        Value:
-                            Fn::Join:
-                                - ''
-                                -
-                                    - 's3://'
-                                    -
-                                        Ref: S3BucketWebsite
-            Source:
-                Type: 'CODEPIPELINE'
-            TimeoutInMinutes: 10
-            Tags:
-                -
-                    Key: "Website"
-                    Value:
-                        Ref: WebsiteName
-    CloudFrontAI:
-        Type: 'AWS::CloudFront::CloudFrontOriginAccessIdentity'
-        Properties:
-            CloudFrontOriginAccessIdentityConfig:
-                Comment:
-                    Fn::Join:
-                        - '-'
-                        -   - 'access'
-                            - 'identity'
-                            -
-                                Ref: S3BucketWebsite
-    CloudFront:
-        DependsOn:
-            - ACMCertificate
-            - CloudFrontAI
-            - S3BucketWebsite
-        Type: 'AWS::CloudFront::Distribution'
-        Properties:
-            DistributionConfig:
-                Aliases:
-                    - Ref: WebsiteName
-                    - Fn::Join:
-                        - '.'
-                        -
-                            - 'www'
-                            -
-                                Ref: WebsiteName
-                Comment:
-                    Ref: WebsiteName
-                DefaultCacheBehavior:
-                    AllowedMethods:
-                    - 'GET'
-                    - 'HEAD'
-                    TargetOriginId: 'S3Origin'
-                    ForwardedValues:
-                        QueryString: 'false'
-                        Cookies:
-                            Forward: 'none'
-                    MinTTL: 0
-                    ViewerProtocolPolicy: 'redirect-to-https'
-                DefaultRootObject: 'index.html'
-                Enabled: 'true'
-                Origins:
-                - DomainName:
-                    Fn::GetAtt:
-                        - S3BucketWebsite
-                        - DomainName
-                  Id: 'S3Origin'
-                  OriginPath: ''
-                  S3OriginConfig:
-                      OriginAccessIdentity:
-                          Fn::Join:
-                            - ''
-                            -
-                                - 'origin-'
-                                - 'access-'
-                                - 'identity/cloudfront/'
-                                -
-                                    Ref: CloudFrontAI
-                PriceClass: 'PriceClass_100'
-                ViewerCertificate:
-                    AcmCertificateArn:
-                        Ref: ACMCertificate
-                    SslSupportMethod: 'sni-only'
-            Tags:
-                -
-                    Key: "Website"
-                    Value:
-                        Ref: WebsiteName
-    HostedZone:
-        Type: 'AWS::Route53::HostedZone'
-        Properties:
-            HostedZoneConfig:
-                Comment:
-                    Fn::Join:
-                        - ' '
-                        -
-                            - 'Hosted zone for'
-                            -
-                                Ref: WebsiteName
-            HostedZoneTags:
-                -
-                    Key: "Website"
-                    Value:
-                        Ref: WebsiteName
-            Name:
-                Ref: WebsiteName
-    RecordSetsDefault:
-        Type: 'AWS::Route53::RecordSet'
-        Properties:
-            HostedZoneId:
-                Ref: 'HostedZone'
-            Name:
-                Ref: WebsiteName
-            Type: 'A'
-            AliasTarget:
-                DNSName:
-                    Fn::GetAtt:
-                        - CloudFront
-                        - DomainName
-                HostedZoneId: 'Z2FDTNDATAQYW2'
-    RecordSetsWWW:
-        Type: 'AWS::Route53::RecordSet'
-        Properties:
-            HostedZoneId:
-                Ref: 'HostedZone'
-            Name:
-                Fn::Join:
-                    - '.'
-                    -
-                        - 'www'
-                        -
-                            Ref: WebsiteName
-            Type: 'A'
-            AliasTarget:
-                DNSName:
-                    Fn::GetAtt:
-                        - CloudFront
-                        - DomainName
-                HostedZoneId: 'Z2FDTNDATAQYW2'
+  ACMCertificate:
+    Type: 'AWS::CertificateManager::Certificate'
+    Properties:
+      DomainName: !Ref 'websitename'
+      SubjectAlternativeNames: !Sub 'www.${websitename}'
+      Tags:
+        - Key: "Website"
+          Value: !Ref 'websitename'
+        - Key: "Name"
+          Value: !Ref 'websitename'
+  IAMRoleCodeBuild:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: 'Allow'
+            Principal:
+              Service:
+                - 'codebuild.amazonaws.com'
+            Action:
+              - 'sts:AssumeRole'
+      Path: '/'
+      Policies:
+        - PolicyName: 'S3'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: 'Allow'
+                Action:
+                  - 's3:GetObject'
+                  - 's3:GetObjectVersion'
+                Resource:
+                  - !GetAtt 'S3BucketWebsite.Arn'
+                  - !Sub
+                    - '${S3Bucket}/*'
+                    - S3Bucket: !GetAtt 'S3BucketWebsite.Arn'
+              - Effect: 'Allow'
+                Action:
+                  - 's3:PutObject'
+                  - 's3:ListObjects'
+                  - 'S3:ListBucket'
+                  - 's3:DeleteObject'
+                Resource:
+                  - !GetAtt 'S3BucketWebsite.Arn'
+                  - !Sub
+                    - '${S3Bucket}/*'
+                    - S3Bucket: !GetAtt 'S3BucketWebsite.Arn'
+  IAMRolePolicyCodeBuild:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: 'CloudWatch'
+      Roles:
+        - !Ref 'IAMRoleCodeBuild'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: 'Allow'
+            Action:
+              - 'logs:CreateLogGroup'
+              - 'logs:CreateLogStream'
+              - 'logs:PutLogEvents'
+            Resource:
+              - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${CodeBuild}:*'
+  IAMRoleCodePipeline:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: 'Allow'
+            Principal:
+             Service:
+              - 'codepipeline.amazonaws.com'
+            Action:
+              - 'sts:AssumeRole'
+      Policies:
+        - PolicyName: 'CodeCommit'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: 'Allow'
+                Action:
+                  - 'codecommit:GetBranch'
+                  - 'codecommit:GetCommit'
+                  - 'codecommit:UploadArchive'
+                  - 'codecommit:GetUploadArchiveStatus'
+                  - 'codecommit:CancelUploadArchive'
+                Resource: !GetAtt 'CodeCommit.Arn'
+        - PolicyName: 'S3'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: 'Allow'
+                Action:
+                  - 's3:Get*'
+                  - 's3:Put*'
+                Resource:
+                  - !GetAtt 'S3BucketWebsite.Arn'
+                  - !Sub
+                    - '${S3Bucket}/*'
+                    - S3Bucket: !GetAtt 'S3BucketWebsite.Arn'
+        - PolicyName: 'CodeBuild'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: 'Allow'
+                Action:
+                  - 'codebuild:BatchGetBuilds'
+                  - 'codebuild:StartBuild'
+                Resource: !GetAtt 'CodeBuild.Arn'
+      Path: '/'
+  S3BucketWebsite:
+    Type: 'AWS::S3::Bucket'
+    DeletionPolicy: 'Retain'
+    Properties:
+      Tags:
+        - Key: 'Website'
+          Value: !Ref 'websitename'
+  S3BucketPolicyWebsite:
+    Type: 'AWS::S3::BucketPolicy'
+    Properties:
+      Bucket: !Ref 'S3BucketWebsite'
+      PolicyDocument:
+        Statement:
+          - Action:
+              - 's3:GetObject'
+            Effect: 'Allow'
+            Resource: !Sub 'arn:aws:s3:::${S3BucketWebsite}/*'
+            Principal:
+              AWS: !Sub 'arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity ${CloudFrontAI}/'
+  CodeCommit:
+    Type: 'AWS::CodeCommit::Repository'
+    DeletionPolicy: 'Retain'
+    Properties:
+      RepositoryDescription: !Ref 'websitename'
+      RepositoryName: !Ref 'name'
+  CodePipeline:
+    Type: 'AWS::CodePipeline::Pipeline'
+    Properties:
+      RoleArn: !GetAtt 'IAMRoleCodePipeline.Arn'
+      Stages:
+        - Name: 'Source'
+          Actions:
+            - Name: 'SourceAction'
+              ActionTypeId:
+                Category: 'Source'
+                Owner: 'AWS'
+                Version: 1
+                Provider: 'CodeCommit'
+              OutputArtifacts:
+                - Name: 'SourceOutput'
+              Configuration:
+                BranchName: 'master'
+                RepositoryName: !GetAtt 'CodeCommit.Name'
+              RunOrder: 1
+        - Name: 'Build'
+          Actions:
+            - Name: 'Build'
+              ActionTypeId:
+                Category: 'Build'
+                Owner: 'AWS'
+                Version: 1
+                Provider: 'CodeBuild'
+              InputArtifacts:
+                - Name: 'SourceOutput'
+              Configuration:
+                ProjectName: !Ref 'CodeBuild'
+      ArtifactStore:
+        Type: 'S3'
+        Location: !Ref 'S3BucketWebsite'
+  CodeBuild:
+    Type: 'AWS::CodeBuild::Project'
+    Properties:
+      Name: !Ref 'name'
+      Description: !Sub 'Automated build of ${websitename}'
+      ServiceRole: !GetAtt 'IAMRoleCodeBuild.Arn'
+      Artifacts:
+        Type: 'CODEPIPELINE'
+      Environment:
+        Type: 'LINUX_CONTAINER'
+        ComputeType: 'BUILD_GENERAL1_SMALL'
+        Image: 'aws/codebuild/ubuntu-base:14.04'
+        EnvironmentVariables:
+          - Name: 'S3Bucket'
+            Value: !Sub 's3://${S3BucketWebsite}/public'
+      Source:
+        Type: 'CODEPIPELINE'
+      TimeoutInMinutes: 10
+      Tags:
+        - Key: "Website"
+          Value: !Ref 'websitename'
+  CloudFrontAI:
+    Type: 'AWS::CloudFront::CloudFrontOriginAccessIdentity'
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: !Sub 'access-identity-${S3BucketWebsite}'
+  CloudFront:
+    DependsOn:
+      - 'ACMCertificate'
+      - 'CloudFrontAI'
+      - 'S3BucketWebsite'
+    Type: 'AWS::CloudFront::Distribution'
+    Properties:
+      DistributionConfig:
+        Aliases: 
+          - !Ref 'websitename'
+          - !Sub 'www.${websitename}'
+        Comment: !Ref 'websitename'
+        DefaultCacheBehavior:
+          AllowedMethods:
+            - 'GET'
+            - 'HEAD'
+          TargetOriginId: 'S3Origin'
+          ForwardedValues:
+            QueryString: 'false'
+            Cookies:
+              Forward: 'none'
+          MinTTL: 0
+          ViewerProtocolPolicy: 'redirect-to-https'
+        DefaultRootObject: 'index.html'
+        Enabled: 'true'
+        Origins:
+          - DomainName: !GetAtt 'S3BucketWebsite.DomainName'
+            Id: 'S3Origin'
+            OriginPath: 'public'
+            S3OriginConfig:
+              OriginAccessIdentity: !Sub 'origin-access-identity/cloudfront/${CloudFrontAI}'
+        PriceClass: 'PriceClass_100'
+        ViewerCertificate:
+          AcmCertificateArn: !Ref 'ACMCertificate'
+          SslSupportMethod: 'sni-only'
+      Tags:
+        - Key: "Website"
+          Value: !Ref 'websitename'
+        - Key: "Name"
+          Value: !Ref 'name'
+  HostedZone:
+    Type: 'AWS::Route53::HostedZone'
+    Properties:
+      HostedZoneConfig:
+        Comment: !Sub 'Hosted zone for ${websitename}'
+      HostedZoneTags:
+        - Key: "Website"
+          Value: !Ref 'websitename'
+      Name: !Ref 'websitename'
+  RecordSetsDefault:
+    Type: 'AWS::Route53::RecordSet'
+    Properties:
+      HostedZoneId: !Ref 'HostedZone'
+      Name: !Ref 'websitename'
+      Type: 'A'
+      AliasTarget:
+        DNSName: !GetAtt 'CloudFront.DomainName'
+        HostedZoneId: 'Z2FDTNDATAQYW2'
+  RecordSetsWWW:
+    Type: 'AWS::Route53::RecordSet'
+    Properties:
+      HostedZoneId: !Ref 'HostedZone'
+      Name: !Sub 'www.${websitename}'
+      Type: 'A'
+      AliasTarget:
+        DNSName: !GetAtt 'CloudFront.DomainName'
+        HostedZoneId: 'Z2FDTNDATAQYW2'
 Outputs:
-    RepoSshURL:
-        Description: 'Clone SSH URL'
-        Value:
-            Fn::GetAtt:
-                - CodeCommit
-                - CloneUrlSsh
-    RepoHttpURL:
-        Description: 'Clone HTTP URL'
-        Value:
-            Fn::GetAtt:
-                - CodeCommit
-                - CloneUrlHttp
+  RepoSshURL:
+    Description: 'Clone SSH URL'
+    Value: !GetAtt 'CodeCommit.CloneUrlSsh'
+  RepoHttpURL:
+    Description: 'Clone HTTP URL'
+    Value: !GetAtt 'CodeCommit.CloneUrlHttp'
