@@ -11,7 +11,8 @@ Resources:
     Type: 'AWS::CertificateManager::Certificate'
     Properties:
       DomainName: !Ref 'websitename'
-      SubjectAlternativeNames: !Sub 'www.${websitename}'
+      SubjectAlternativeNames:
+        - !Sub 'www.${websitename}'
       Tags:
         - Key: "Website"
           Value: !Ref 'websitename'
@@ -235,7 +236,7 @@ Resources:
         Origins:
           - DomainName: !GetAtt 'S3BucketWebsite.DomainName'
             Id: 'S3Origin'
-            OriginPath: 'public'
+            OriginPath: '/public'
             S3OriginConfig:
               OriginAccessIdentity: !Sub 'origin-access-identity/cloudfront/${CloudFrontAI}'
         PriceClass: 'PriceClass_100'
@@ -281,3 +282,9 @@ Outputs:
   RepoHttpURL:
     Description: 'Clone HTTP URL'
     Value: !GetAtt 'CodeCommit.CloneUrlHttp'
+  Domain:
+    Description: 'Created Hosted Domain Name'
+    Value: !Ref 'websitename'
+  HostedZoneId:
+    Description: 'Hosted Zone'
+    Value: !Ref 'HostedZone'
