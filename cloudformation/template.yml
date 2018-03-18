@@ -83,6 +83,7 @@ Resources:
               - 'codepipeline.amazonaws.com'
             Action:
               - 'sts:AssumeRole'
+      Path: '/'
       Policies:
         - PolicyName: 'CodeCommit'
           PolicyDocument:
@@ -118,12 +119,14 @@ Resources:
                   - 'codebuild:BatchGetBuilds'
                   - 'codebuild:StartBuild'
                 Resource: !GetAtt 'CodeBuild.Arn'
-      Path: '/'
   S3BucketWebsite:
     Type: 'AWS::S3::Bucket'
     DeletionPolicy: 'Retain'
     Properties:
+      BucketName: !Sub '${name}-${AWS::AccountId}'
       Tags:
+        - Key: 'Name'
+          Value: !Ref 'name'
         - Key: 'Website'
           Value: !Ref 'websitename'
   S3BucketPolicyWebsite:
